@@ -1,0 +1,248 @@
+
+ Cleanup before you start and load helper functions
+```{r}
+rm( list=ls() )
+source("/Users/tura_ventola_franch/Desktop/utilities.R")
+save.plots <- TRUE
+library(tseries)
+library(moments)
+```
+
+ Load data
+```{r}
+GPDI <- read.table('/Users/tura_ventola_franch/Desktop/GPDIC1.csv',header=TRUE,sep=',')
+
+gpdi_level <- GPDI[,2];
+
+T <- nrow(GPDI)
+grate <- ( (gpdi_level[2:T]/gpdi_level[1:(T-1)])**4 - 1 )*100
+grate <- 4 * diff( log(gpdi_level) ) * 100
+```
+
+
+```{r}
+# 80% of our data : 160
+is <- grate[c(0:160)]
+N <- 160
+print(is)
+```
+```{r}
+plot( grate , t='p' , pch=16, col='dodgerblue4' , tck = 0.02 , xlim=c(1,N) )
+```
+
+LBQ Test
+```{r}
+Box.test( is, lag=25 , type="Ljung-Box" )
+
+# ACF & PACF
+par( mar=c(2,2,1,1) , mfrow=c(2,1) )
+acf( is , ylim=c(-0.2,1) , lwd=5 , xlim=c(0,50) , col='dodgerblue4' , tck=0.02, lag.max = 50)
+legend('topright',c('ACF'),col=c('dodgerblue4'),lwd=3)
+pacf( is , ylim=c(-0.2,1) , lwd=5 , xlim=c(0,50) , col='dodgerblue4' , tck=0.02, lag.max = 50)
+legend('topright',c('PACF'),col=c('dodgerblue4'),lwd=3)
+```
+Goodness of fit
+```{r}
+ar1    = arima(is,order=c(1,0,0))
+ar2    = arima(is,order=c(2,0,0))
+ar3    = arima(is,order=c(3,0,0))
+ar4    = arima(is,order=c(4,0,0))
+ar5    = arima(is,order=c(5,0,0))
+
+ma1    = arima(is,order=c(0,0,1))
+ma2    = arima(is,order=c(0,0,2))
+ma3    = arima(is,order=c(0,0,3))
+ma4    = arima(is,order=c(0,0,4))
+ma5    = arima(is,order=c(0,0,5))
+
+arma11 = arima(is,order=c(1,0,1))
+arma12 = arima(is,order=c(1,0,2))
+arma21 = arima(is,order=c(2,0,1))
+arma22 = arima(is,order=c(2,0,2))
+
+ar1_aic    <- (-2*ar1$loglik+2*3)/N
+ar2_aic    <- (-2*ar2$loglik+2*4)/N
+ar3_aic    <- (-2*ar3$loglik+2*5)/N
+ar4_aic    <- (-2*ar4$loglik+2*6)/N
+ar5_aic    <- (-2*ar5$loglik+2*7)/N
+
+ma1_aic    <- (-2*ma1$loglik+2*3)/N
+ma2_aic    <- (-2*ma2$loglik+2*4)/N
+ma3_aic    <- (-2*ma3$loglik+2*5)/N
+ma4_aic    <- (-2*ma4$loglik+2*6)/N
+ma5_aic    <- (-2*ma5$loglik+2*7)/N
+
+arma11_aic <- (-2*arma11$loglik+2*4)/N
+arma12_aic <- (-2*arma12$loglik+2*5)/N
+arma21_aic <- (-2*arma21$loglik+2*5)/N
+arma22_aic <- (-2*arma22$loglik+2*6)/N
+
+ar1_bic    <- (-2*ar1$loglik+log(N)*3)/N
+ar2_bic    <- (-2*ar2$loglik+log(N)*4)/N
+ar3_bic    <- (-2*ar3$loglik+log(N)*5)/N
+ar4_bic    <- (-2*ar4$loglik+log(N)*6)/N
+ar5_bic    <- (-2*ar5$loglik+log(N)*7)/N
+
+ma1_bic    <- (-2*ma1$loglik+log(N)*3)/N
+ma2_bic    <- (-2*ma2$loglik+log(N)*4)/N
+ma3_bic    <- (-2*ma3$loglik+log(N)*5)/N
+ma4_bic    <- (-2*ma4$loglik+log(N)*6)/N
+ma5_bic    <- (-2*ma5$loglik+log(N)*7)/N
+
+arma11_bic <- (-2*arma11$loglik+log(N)*4)/N
+arma12_bic <- (-2*arma12$loglik+log(N)*5)/N
+arma21_bic <- (-2*arma21$loglik+log(N)*5)/N
+arma22_bic <- (-2*arma22$loglik+log(N)*6)/N
+
+
+vectorarloklik <- c(ar1$loglik,ar2$loglik,ar3$loglik,ar4$loglik,ar5$loglik)
+vectoraraic <- c(ar1_aic,ar2_aic,ar3_aic,ar4_aic,ar5_aic)
+vectorarbic <- c(ar1_bic,ar2_bic,ar3_bic,ar4_bic,ar5_bic)
+round( rbind( c(ar1$loglik,ar2$loglik,ar3$loglik,ar4$loglik,ar5$loglik), 
+              c(ar1_aic,ar2_aic,ar3_aic,ar4_aic,ar5_aic) , 
+              c(ar1_bic,ar2_bic,ar3_bic,ar4_bic,ar5_bic) ) ,  3 )
+print('ar loklik:') 
+round(rbind(max(vectorarloklik)),3)
+print('ar aic:') 
+round(rbind(min(vectoraraic)),3)
+print('ar bic:') 
+round(rbind(min(vectorarbic)),3)
+
+vectormaloklik <- c(ma1$loglik,ma2$loglik,ma3$loglik,ma4$loglik,ma5$loglik)
+vectormaaic <- c(ma1_aic,ma2_aic,ma3_aic,ma4_aic,ma5_aic)
+vectormabic <- c(ma1_bic,ma2_bic,ma3_bic,ma4_bic,ma5_bic)
+round( rbind( c(ma1$loglik,ma2$loglik,ma3$loglik,ma4$loglik,ma5$loglik), 
+              c(ma1_aic,ma2_aic,ma3_aic,ma4_aic,ma5_aic) , 
+              c(ma1_bic,ma2_bic,ma3_bic,ma4_bic,ma5_bic) ) ,  3 )
+print('ma loklik:')
+round(rbind(max(vectormaloklik)),3)
+print('ma aic:')
+round(rbind(min(vectormaaic)),3)
+print('ma bic:')
+round(rbind(min(vectormabic)),3)
+
+vectorarmaloklik <- c(arma11$loglik,arma12$loglik,arma21$loglik,arma22$loglik)
+vectorarmaaic <- c(arma11_aic,arma12_aic,arma21_aic,arma22_aic)
+vectorarmabic <- c(arma11_bic,arma12_bic,arma21_bic,arma22_bic)
+round( rbind( c(arma11$loglik,arma12$loglik,arma21$loglik,arma22$loglik),
+              c(arma11_aic,arma12_aic,arma21_aic,arma22_aic) , 
+              c(arma11_bic,arma12_bic,arma21_bic,arma22_bic) ) ,  3 )
+print('arma loklik:')
+round(rbind(max(vectorarmaloklik)),3)
+print('arma aic:')
+round(rbind(min(vectorarmaaic)),3)
+print('arma bic:')
+round(rbind(min(vectorarmabic)),3)
+```
+
+Parameter estimates
+```{r}
+print(ar1)
+print(ma1)
+print(arma11)
+```
+
+
+Fitted values
+```{r}
+ar1_mu     <- is-ar1$residuals
+ma1_mu     <- is-ma1$residuals
+arma11_mu  <- is-arma11$residuals
+ar1_res    <- as.numeric(ar1$residuals)
+ma1_res    <- as.numeric(ma1$residuals)
+arma11_res <- as.numeric(arma11$residuals)
+```
+
+Residuals
+```{r}
+par( mar=c(2,2,3,2) , mfrow=c(2,2) )
+kernel <- density(ar1_res/sqrt(ar1$sigma2))
+plot( kernel , main='AR1' )
+polygon( kernel , col="turquoise3" , border='turquoise4')
+abline(h=0,lwd=2)
+lines( seq(-10,20,0.1) , dnorm( seq(-10,20,0.1) ) , col='slateblue' ,lwd=2 )
+
+kernel <- density(ma1_res/sqrt(ma1$sigma2))
+plot( kernel , main='MA1' )
+polygon( kernel , col="turquoise3" , border='turquoise4')
+abline(h=0,lwd=2)
+lines( seq(-10,20,0.1) , dnorm( seq(-10,20,0.1) ) , col='slateblue' ,lwd=2 )
+
+kernel <- density(arma11_res/sqrt(arma11$sigma2))
+plot( kernel , main='ARMA11' )
+polygon( kernel , col="turquoise3" , border='turquoise4')
+abline(h=0,lwd=2)
+lines( seq(-10,20,0.1) , dnorm( seq(-10,20,0.1) ) , col='slateblue' ,lwd=2 )
+
+par( mar=c(2,2,3,2) , mfrow=c(2,2) )
+
+qqnorm(ar1_res,col='turquoise3',main='AR1')
+qqline(ar1_res,lwd=2,lty=3)
+qqnorm(ma1_res,col='turquoise3',main='MA1')
+qqline(ma1_res,lwd=2,lty=3)
+qqnorm(arma11_res,col='turquoise3',main='ARMA11')
+qqline(arma11_res,lwd=2,lty=3)
+```
+
+Residual diagnostics
+```{r}
+ar1.res.jb    <- jarque.test(ar1_res)$p.value
+ma1.res.jb    <- jarque.test(ma1_res)$p.value
+arma11.res.jb <- jarque.test(arma11_res)$p.value
+
+ar1.res.lbq    <- Box.test( ar1_res, lag=22 , type="Ljung-Box" )$p.value
+ma1.res.lbq    <- Box.test( ma1_res, lag=22 , type="Ljung-Box" )$p.value
+arma11.res.lbq <- Box.test( arma11_res, lag=22 , type="Ljung-Box" )$p.value
+
+round( rbind( c(ar1.res.jb,ma1.res.jb,arma11.res.jb) , 
+       c(ar1.res.lbq,ma1.res.lbq,arma11.res.lbq) ) , 3 )
+```
+
+Plots
+```{r}
+# AR2
+par( mar=c(2,2,1,1) , xaxs="i" , mfrow=c(2,1) )
+plot( is , t='p' , pch=21, col='slateblue3' , tck = 0.02 , xlim=c(1,160) )
+lines( ar1_mu , t='l' , lwd=2 , col='deeppink3' )
+grid( lwd=1 , col="darkgrey" )
+plot( ar1_res , col='cyan4' )
+abline( h=0 , lwd=2 )
+grid( lwd=1 , col="darkgrey" )
+
+par( mar=c(2,2,1,1) , mfrow=c(2,1) )
+acf( ar1_res , ylim=c(-0.2,1) , lwd=5 , xlim=c(0,25) , col='dodgerblue4' , tck=0.02)
+legend('topright',c('ACF'),col=c('dodgerblue4'),lwd=3)
+pacf( ar1_res , ylim=c(-0.2,1) , lwd=5 , xlim=c(0,25) , col='dodgerblue4' , tck=0.02)
+legend('topright',c('PACF'),col=c('dodgerblue4'),lwd=3)
+
+# MA1
+par( mar=c(2,2,1,1) , xaxs="i" , mfrow=c(2,1) )
+plot( is , t='p' , pch=21, col='slateblue3' , tck = 0.02 , xlim=c(1,160))
+lines( ma1_mu , t='l' , lwd=2 , col='deeppink3' )
+grid( lwd=1 , col="darkgrey" )
+plot( ma1_res , col='cyan4' )
+abline( h=0 , lwd=2 )
+grid( lwd=1 , col="darkgrey" )
+
+par( mar=c(2,2,1,1) , mfrow=c(2,1) )
+acf( ma1_res , ylim=c(-0.2,1) , lwd=5 , xlim=c(0,25) , col='dodgerblue4' , tck=0.02)
+legend('topright',c('ACF'),col=c('dodgerblue4'),lwd=3)
+pacf( ma1_res , ylim=c(-0.2,1) , lwd=5 , xlim=c(0,25) , col='dodgerblue4' , tck=0.02)
+legend('topright',c('PACF'),col=c('dodgerblue4'),lwd=3)
+
+# ARMA11
+par( mar=c(2,2,1,1) , xaxs="i" , mfrow=c(2,1) )
+plot( is , t='p' , pch=21, col='slateblue3' , tck = 0.02 , xlim=c(1,160))
+lines( arma11_mu , t='l' , lwd=2 , col='deeppink3' )
+grid( lwd=1 , col="darkgrey" )
+plot( arma11_res , col='cyan4' )
+abline( h=0 , lwd=2 )
+grid( lwd=1 , col="darkgrey" )
+
+par( mar=c(2,2,1,1) , mfrow=c(2,1) )
+acf( arma11_res , ylim=c(-0.2,1) , lwd=5 , xlim=c(0,25) , col='dodgerblue4' , tck=0.02)
+legend('topright',c('ACF'),col=c('dodgerblue4'),lwd=3)
+pacf( arma11_res , ylim=c(-0.2,1) , lwd=5 , xlim=c(0,25) , col='dodgerblue4' , tck=0.02)
+legend('topright',c('PACF'),col=c('dodgerblue4'),lwd=3)
+```
+
