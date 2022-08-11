@@ -1,0 +1,91 @@
+
+ Cleanup before you start and load helper functions
+```{r}
+rm( list=ls() )
+source("~/Desktop/code/lib/utilities.R")
+save.plots <- TRUE
+library(tseries)
+library(moments)
+```
+
+ Load data
+```{r}
+GPDI <- read.table('/Users/tura_ventola_franch/Desktop/project1.csv',header=TRUE,sep=',')
+```
+
+ Construct gdp dates
+```{r}
+dates <- as.Date( as.character( GPDI[,1] ) , '%Y-%m-%d' )
+```
+
+ Get gdp level
+```{r}
+gpdi_level <- GPDI[,2];
+
+myplot( dates , gpdi_level )
+```
+
+```{r}
+adf.test(gpdi_level)
+```
+
+ Construct gdp growth rates
+```{r}
+T <- nrow(GPDI)
+grate <- ( (gpdi_level[2:T]/gpdi_level[1:(T-1)])**4 - 1 )*100
+grate <- 4 * diff( log(gpdi_level) ) * 100
+
+myplot( dates[2:T] , grate , col='pink4' )
+abline(h=0 , lwd=2)
+```
+
+```{r}
+adf.test(grate)
+```
+
+ Pack dates and grates in a data frame and write it to disk
+```{r}
+data <- cbind.data.frame(dates[2:T],grate)
+write.table(data,'/Users/tura_ventola_franch/Desktop/GPDI_growth_rate',sep=' ',row.names=FALSE,col.names=FALSE)
+```
+
+Histogram, QQplot, Kernel
+```{r}
+hist(grate,50,freq=FALSE,col='slategray2',border='midnightblue',main='')
+
+qqnorm(grate,col='slategray2',main='')
+qqline(grate,lwd=2,lty=3)
+
+kernel <- density(grate)
+kernel
+
+par( mar=c(2,2,0.1,0.1) ) # INTERNAl
+plot( kernel , main='' , yaxs='i' )
+polygon( kernel , col="slategray2" , border='midnightblue' )
+lines( seq(-65,50,0.1) , dnorm( seq(-65,50,0.1) , mean(grate) , sd(grate) ) , col='darkslateblue' ,lwd=2)
+```
+
+descriptive stats
+```{r}
+descr <- as.matrix( c( mean(grate) , sd(grate) , skewness(grate) , kurtosis(grate) ) ) 
+dimnames(descr)[[1]] <- list('mean','ann vol','skew','kurt')
+print( descr )
+
+# jb test
+jarque.test(grate)
+```
+
+ACF, PACF, Ljung-Box
+```{r}
+grate.acf <- acf(grate , ylim=c(-0.2,1) , lwd=5 , xlim=c(0,25) , col='aquamarine3')
+
+print( grate.acf )
+
+# PACF
+grate.pacf <- pacf(grate, ylim=c(-0.2,1) , lwd=5 , xlim=c(0,25) , col='aquamarine3')
+
+print( grate.pacf )
+
+Box.test(grate, lag=24 , type="Ljung-Box" )
+```
+

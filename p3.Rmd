@@ -1,0 +1,284 @@
+```{r}
+rm( list=ls() )
+source("/Users/tura_ventola_franch/Desktop/utilities.R")
+save.plots <- TRUE
+library(tseries)
+library(moments)
+```
+
+```{r}
+GPDI <- read.table('/Users/tura_ventola_franch/Desktop/project1.csv',header=TRUE,sep=',')
+
+dates <- as.Date(as.character(GPDI[,1]),'%Y-%m-%d')
+gpdi_level <- GPDI[,2];
+
+T <- nrow(GPDI)
+grate <- ( (gpdi_level[2:T]/gpdi_level[1:(T-1)])**4 - 1 )*100
+grate <-4 * diff( log(gpdi_level) ) * 100
+```
+
+```{r}
+grate <- matrix(grate, nrow = 199)
+
+plot(grate, )
+```
+
+```{r}
+H <- 38
+N <- nrow(grate)-38
+is <- grate[1:N,1]
+os <- grate[(N+1):(N+H),1]
+```
+
+```{r}
+ar1    = arima(is,order=c(2,0,0))
+ma1    = arima(is,order=c(0,0,1))
+arma11 = arima(is,order=c(1,0,1))
+
+ar1_aic    <- (-2*ar1$loglik+2*4)/N
+ma1_aic    <- (-2*ma1$loglik+2*3)/N
+arma11_aic <- (-2*arma11$loglik+2*4)/N
+
+ar1_bic    <- (-2*ar1$loglik+log(N)*4)/N
+ma1_bic    <- (-2*ma1$loglik+log(N)*3)/N
+arma11_bic <- (-2*arma11$loglik+log(N)*4)/N
+```
+
+```{r}
+ar1_mu     <- is-ar1$residuals
+ma1_mu     <- is-ma1$residuals
+arma11_mu  <- is-arma11$residuals
+ar1_res    <- as.numeric(ar1$residuals)
+ma1_res    <- as.numeric(ma1$residuals)
+arma11_res <- as.numeric(arma11$residuals)
+```
+
+
+```{r}
+ar1_pred    <- predict( ar1 , n.ahead=H )
+ma1_pred    <- predict( ma1 , n.ahead=H )
+arma11_pred <- predict( arma11 , n.ahead=H )
+
+ar1_mse    = mean( (os - as.numeric(ar1_pred$pred) )**2 )
+ma1_mse    = mean( (os - as.numeric(ma1_pred$pred) )**2 )
+arma11_mse = mean( (os - as.numeric(arma11_pred$pred) )**2 )
+
+plot( dates[(N-10):(N+H)] , c(is[(N-10):N], os) , main=sprintf('AR(1) MSE %3.3f',ar1_mse) , ylim=c(min(is),max(is)) , ylab='',xlab='', tck = 0.02 , pch=16 , col='darkorange') 
+abline( v=dates[N] , lwd=2 )
+abline( h=ar1$coef['intercept'] , lwd=2 )
+grid( lwd=1 , col="darkgrey" )
+lines( dates[(N-10):N] , ar1_mu[(N-10):N] , t='l' , lwd=2 , col='blue3' )
+lines( dates[(N+1):(N+H)] , as.numeric(ar1_pred$pred)  , t='b' , lwd=2 , col='blue3' )
+
+plot( dates[(N-10):(N+H)] , c(is[(N-10):N], os) , main=sprintf('MA(1) MSE %3.3f',ma1_mse) , ylim=c(min(is),max(is)) , ylab='',xlab='', tck = 0.02 , pch=16 , col='darkorange') 
+abline( v=dates[N] , lwd=2 )
+abline( h=ma1$coef['intercept'] , lwd=2 )
+grid( lwd=1 , col="darkgrey" )
+lines( dates[(N-10):N] , ma1_mu[(N-10):N] , t='l' , lwd=2 , col='blue3' )
+lines( dates[(N+1):(N+H)] , as.numeric(ma1_pred$pred)  , t='b' , lwd=2 , col='blue3' )
+
+plot( dates[(N-10):(N+H)] , c(is[(N-10):N], os) , main=sprintf('ARMA(1,1) MSE %3.3f',arma11_mse) , ylim=c(min(is),max(is)) , ylab='',xlab='', tck = 0.02 , pch=16  , col='darkorange') 
+abline( v=dates[N] , lwd=2 )
+abline( h=ma1$coef['intercept'] , lwd=2 )
+grid( lwd=1 , col="darkgrey" )
+lines( dates[(N-10):N] , arma11_mu[(N-10):N] , t='l' , lwd=2 , col='blue3' )
+lines( dates[(N+1):(N+H)] , as.numeric(arma11_pred$pred)  , t='b' , lwd=2 , col='blue3' )
+
+round(c(ar1_mse , ma1_mse ,  arma11_mse )*100 , 3 )
+```
+```{r}
+ma1_pred2    <- predict( ma1 , n.ahead=H )
+ar1_pred2    <- predict( ar1 , n.ahead=H )
+arma11_pred2 <- predict( arma11 , n.ahead=H )
+
+ma1_mse2    = sqrt( mean( (os - as.numeric(ma1_pred2$pred) )**2 ) )
+ar1_mse2    = sqrt( mean( (os - as.numeric(ar1_pred2$pred) )**2 ) )
+arma11_mse2 = sqrt( mean( (os - as.numeric(arma11_pred2$pred) )**2 ) )
+
+myplot( dates[(N-10):(N+H)] , c(is[(N-10):N], os) , t='b' , main=sprintf('MA(1) RMSE %3.3f',ma1_mse2) , ylim=c(-50,40) , col='darkorange' ) 
+abline( v=dates[N] , lwd=2 )
+abline( h=ma1$coef['intercept'] , lwd=2 )
+lines( dates[(N-10):N] , ma1_mu[(N-10):N] , t='l' , lwd=2 , col='blue3' )
+lines( dates[(N+1):(N+H)] , as.numeric(ma1_pred2$pred)  , t='b' , lwd=2 , col='blue3' )
+
+myplot( dates[(N-10):(N+H)] , c(is[(N-10):N], os) , t='b', main=sprintf('AR(1) RMSE %3.3f',ar1_mse2) , ylim=c(-50,40) , col='darkorange' ) 
+abline( v=dates[N] , lwd=2 )
+abline( h=ar1$coef['intercept'] , lwd=2 )
+lines( dates[(N-10):N] , ar1_mu[(N-10):N] , t='l' , lwd=2 , col='blue3' )
+lines( dates[(N+1):(N+H)] , as.numeric(ar1_pred2$pred)  , t='b' , lwd=2 , col='blue3' )
+
+myplot( dates[(N-10):(N+H)] , c(is[(N-10):N], os) , t='b' , main=sprintf('ARMA(1,1) RMSE %3.3f',arma11_mse2) , ylim=c(-50,40) , col='darkorange' ) 
+abline( v=dates[N] , lwd=2 )
+abline( h=arma11$coef['intercept'] , lwd=2 )
+lines( dates[(N-10):N] , arma11_mu[(N-10):N] , t='l' , lwd=2 , col='blue3' )
+lines( dates[(N+1):(N+H)] , as.numeric(arma11_pred2$pred)  , t='b' , lwd=2 , col='blue3' )
+
+round(c(ma1_mse2 , ar1_mse2 ,  arma11_mse2 )*100 , 3 )
+```
+
+```{r}
+ma1_pred3    <- predict( ma1 , n.ahead=H )
+ar1_pred3    <- predict( ar1 , n.ahead=H )
+arma11_pred3 <- predict( arma11 , n.ahead=H )
+
+ma1_r2    = 1-mean( (os - ma1_pred3$pred )**2 )/mean( (mean(is)-os)**2 )
+ar1_r2    = 1-mean( (os - ar1_pred3$pred )**2 )/mean( (mean(is)-os)**2 )
+arma11_r2 = 1-mean( (os - arma11_pred3$pred )**2 )/mean( (mean(is)-os)**2 )
+
+myplot( dates[(N-10):(N+H)] , c(is[(N-10):N], os) , t='b', main=sprintf('AR(1) R2 %3.3f',ar1_r2) , ylim=c(-40,40) , col='darkorange' ) 
+abline( v=dates[N] , lwd=2 )
+abline( h=ar1$coef['intercept'] , lwd=2 )
+lines( dates[(N-10):N] , ar1_mu[(N-10):N] , t='l' , lwd=2 , col='blue3' )
+lines( dates[(N+1):(N+H)] , ar1_pred3$pred , t='b' , lwd=2 , col='blue3' )
+
+myplot( dates[(N-10):(N+H)] , c(is[(N-10):N], os) , t='b' , main=sprintf('MA(1) R2 %3.3f',ma1_r2) , ylim=c(-40,40) , col='darkorange' ) 
+abline( v=dates[N] , lwd=2 )
+abline( h=ma1$coef['intercept'] , lwd=2 )
+lines( dates[(N-10):N] , ma1_mu[(N-10):N] , t='l' , lwd=2 , col='blue3' )
+lines( dates[(N+1):(N+H)] , ma1_pred3$pred  , t='b' , lwd=2 , col='blue3' )
+
+
+myplot( dates[(N-10):(N+H)] , c(is[(N-10):N], os) , t='b' , main=sprintf('ARMA(1,1) R2 %3.3f',arma11_r2) , ylim=c(-40,40) , col='darkorange' ) 
+abline( v=dates[N] , lwd=2 )
+abline( h=arma11$coef['intercept'] , lwd=2 )
+lines( dates[(N-10):N] , arma11_mu[(N-10):N] , t='l' , lwd=2 , col='blue3' )
+lines( dates[(N+1):(N+H)] , arma11_pred3$pred , t='b' , lwd=2 , col='blue3' )
+
+round(c(ma1_r2 , ar1_r2 ,  arma11_r2 )*100 , 3 )
+```
+
+
+```{r}
+ma1_pred4    <- rep(0,H)
+ar1_pred4    <- rep(0,H)
+arma11_pred4 <- rep(0,H)
+
+for( m in 0:(H-1) ){
+  
+  y <- grate[1:(N+m),1]
+
+  ma1    = arima(y,order=c(0,0,1))
+  ar1    = arima(y,order=c(1,0,0))
+  arma11 = arima(y,order=c(1,0,1))
+
+  ma1_pred4[1+m]    <- predict( ma1 , n.ahead=1 )$pred
+  ar1_pred4[1+m]    <- predict( ar1 , n.ahead=1 )$pred
+  arma11_pred4[1+m] <- predict( arma11 , n.ahead=1 )$pred
+}
+
+ma1_mse_stat    = mean( (os - as.numeric(ma1_pred4) )**2 ) 
+ar1_mse_stat  = mean( (os - as.numeric(ar1_pred4) )**2 ) 
+arma11_mse_stat = mean( (os - as.numeric(arma11_pred4) )**2 ) 
+
+myplot( dates[(N-10):(N+H)] , c(is[(N-10):N], os) , t='b', main=sprintf('AR(1) MSE %3.3f',ar1_mse_stat) , ylim=c(-40,40) , col='darkorange' ) 
+abline( v=dates[N] , lwd=2 )
+abline( h=ar1$coef['intercept'] , lwd=2 )
+lines( dates[(N-10):N] , ar1_mu[(N-10):N] , t='l' , lwd=2 , col='blue3' )
+lines( dates[(N+1):(N+H)] , ar1_pred4 , t='b' , lwd=2 , col='blue3' )
+
+myplot( dates[(N-10):(N+H)] , c(is[(N-10):N], os) , t='b' , main=sprintf('MA(1) MSE %3.3f',ma1_mse_stat) , ylim=c(-40,40) , col='darkorange' ) 
+abline( v=dates[N] , lwd=2 )
+abline( h=ma1$coef['intercept'] , lwd=2 )
+lines( dates[(N-10):N] , ma1_mu[(N-10):N] , t='l' , lwd=2 , col='blue3' )
+lines( dates[(N+1):(N+H)] , ma1_pred4  , t='b' , lwd=2 , col='blue3' )
+
+
+myplot( dates[(N-10):(N+H)] , c(is[(N-10):N], os) , t='b' , main=sprintf('ARMA(1,1) MSE %3.3f',arma11_mse_stat) , ylim=c(-40,40) , col='darkorange' ) 
+abline( v=dates[N] , lwd=2 )
+abline( h=arma11$coef['intercept'] , lwd=2 )
+lines( dates[(N-10):N] , arma11_mu[(N-10):N] , t='l' , lwd=2 , col='blue3' )
+lines( dates[(N+1):(N+H)] , arma11_pred4 , t='b' , lwd=2 , col='blue3' )
+
+round(c(ma1_mse_stat , ar1_mse_stat ,  arma11_mse_stat )*100 , 3 )
+```
+
+
+```{r}
+ma1_pred5    <- rep(0,H)
+ar1_pred5    <- rep(0,H)
+arma11_pred5 <- rep(0,H)
+
+for( m in 0:(H-1) ){
+  
+  y <- grate[1:(N+m),1]
+
+  ma1    = arima(y,order=c(0,0,1))
+  ar1    = arima(y,order=c(1,0,0))
+  arma11 = arima(y,order=c(1,0,1))
+
+  ma1_pred5[1+m]    <- predict( ma1 , n.ahead=1 )$pred
+  ar1_pred5[1+m]    <- predict( ar1 , n.ahead=1 )$pred
+  arma11_pred5[1+m] <- predict( arma11 , n.ahead=1 )$pred
+}
+
+ma1_rmse_stat    = sqrt( mean( (os - as.numeric(ma1_pred5) )**2 ) )
+ar1_rmse_stat  = sqrt( mean( (os - as.numeric(ar1_pred5) )**2 ) )
+arma11_rmse_stat = sqrt( mean( (os - as.numeric(arma11_pred5) )**2 ) )
+
+myplot( dates[(N-10):(N+H)] , c(is[(N-10):N], os) , t='b', main=sprintf('AR(1) RMSE %3.3f',ar1_rmse_stat) , ylim=c(-40,40) , col='darkorange' ) 
+abline( v=dates[N] , lwd=2 )
+abline( h=ar1$coef['intercept'] , lwd=2 )
+lines( dates[(N-10):N] , ar1_mu[(N-10):N] , t='l' , lwd=2 , col='blue3' )
+lines( dates[(N+1):(N+H)] , ar1_pred5 , t='b' , lwd=2 , col='blue3' )
+
+myplot( dates[(N-10):(N+H)] , c(is[(N-10):N], os) , t='b' , main=sprintf('MA(1) RMSE %3.3f',ma1_rmse_stat) , ylim=c(-40,40) , col='darkorange' ) 
+abline( v=dates[N] , lwd=2 )
+abline( h=ma1$coef['intercept'] , lwd=2 )
+lines( dates[(N-10):N] , ma1_mu[(N-10):N] , t='l' , lwd=2 , col='blue3' )
+lines( dates[(N+1):(N+H)] , ma1_pred5  , t='b' , lwd=2 , col='blue3' )
+
+
+myplot( dates[(N-10):(N+H)] , c(is[(N-10):N], os) , t='b' , main=sprintf('ARMA(1,1) RMSE %3.3f',arma11_rmse_stat) , ylim=c(-40,40) , col='darkorange' ) 
+abline( v=dates[N] , lwd=2 )
+abline( h=arma11$coef['intercept'] , lwd=2 )
+lines( dates[(N-10):N] , arma11_mu[(N-10):N] , t='l' , lwd=2 , col='blue3' )
+lines( dates[(N+1):(N+H)] , arma11_pred5 , t='b' , lwd=2 , col='blue3' )
+
+round(c(ma1_rmse_stat , ar1_rmse_stat ,  arma11_rmse_stat )*100 , 3 )
+```
+
+
+```{r}
+ma1_pred6    <- rep(0,H)
+ar1_pred6    <- rep(0,H)
+arma11_pred6 <- rep(0,H)
+
+for( m in 0:(H-1) ){
+  
+  y <- grate[1:(N+m),1]
+
+  ma1    = arima(y,order=c(0,0,1))
+  ar1    = arima(y,order=c(1,0,0))
+  arma11 = arima(y,order=c(1,0,1))
+
+  ma1_pred6[1+m]    <- predict( ma1 , n.ahead=1 )$pred
+  ar1_pred6[1+m]    <- predict( ar1 , n.ahead=1 )$pred
+  arma11_pred6[1+m] <- predict( arma11 , n.ahead=1 )$pred
+}
+
+ma1_r2_stat   = 1-mean( (os - ma1_pred6 )**2 )/mean( (mean(y)-os)**2 )
+ar1_r2_stat   = 1-mean( (os - ar1_pred6 )**2 )/mean( (mean(y)-os)**2 )
+arma11_r2_stat = 1-mean( (os - arma11_pred6 )**2 )/mean( (mean(y)-os)**2 )
+
+myplot( dates[(N-10):(N+H)] , c(is[(N-10):N], os) , t='b', main=sprintf('AR(1) R2 %3.3f',ar1_r2_stat) , ylim=c(-40,40) , col='darkorange' ) 
+abline( v=dates[N] , lwd=2 )
+abline( h=ar1$coef['intercept'] , lwd=2 )
+lines( dates[(N-10):N] , ar1_mu[(N-10):N] , t='l' , lwd=2 , col='blue3' )
+lines( dates[(N+1):(N+H)] , ar1_pred6 , t='b' , lwd=2 , col='blue3' )
+
+myplot( dates[(N-10):(N+H)] , c(is[(N-10):N], os) , t='b' , main=sprintf('MA(1) R2 %3.3f',ma1_r2_stat) , ylim=c(-40,40) , col='darkorange' ) 
+abline( v=dates[N] , lwd=2 )
+abline( h=ma1$coef['intercept'] , lwd=2 )
+lines( dates[(N-10):N] , ma1_mu[(N-10):N] , t='l' , lwd=2 , col='blue3' )
+lines( dates[(N+1):(N+H)] , ma1_pred6  , t='b' , lwd=2 , col='blue3' )
+
+
+myplot( dates[(N-10):(N+H)] , c(is[(N-10):N], os) , t='b' , main=sprintf('ARMA(1,1) R2 %3.3f',arma11_r2_stat) , ylim=c(-40,40) , col='darkorange' ) 
+abline( v=dates[N] , lwd=2 )
+abline( h=arma11$coef['intercept'] , lwd=2 )
+lines( dates[(N-10):N] , arma11_mu[(N-10):N] , t='l' , lwd=2 , col='blue3' )
+lines( dates[(N+1):(N+H)] , arma11_pred6  , t='b' , lwd=2 , col='blue3' )
+
+round(c(ma1_r2_stat, ar1_r2_stat ,  arma11_r2_stat)*100 , 3 )
+```
+
