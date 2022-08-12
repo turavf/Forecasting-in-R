@@ -1,7 +1,7 @@
 # Forecasting-in-R
 Forecasting techniques in R Studio
 
-Time series project consisting of analysing an economic or financial time series.
+Time series project consisting on analyzing an economic or financial time series.
 
 The Code is destributed in 3 parts:
 
